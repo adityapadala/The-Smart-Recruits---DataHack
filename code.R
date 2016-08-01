@@ -1,21 +1,21 @@
 library(ROCR)
 library(pROC)
 library(ggplot2)
-library("randomForest")
-library("parallel")
-library("boot")
-library("xgboost")
-library("Matrix")
+library(randomForest)
+library(parallel)
+library(boot)
+library(xgboost)
+library(Matrix)
 library(Ckmeans.1d.dp)
-library("parallel")
+library(parallel)
 library(dplyr)
 
 getwd()
-setwd('/home/apadala/Documents/AV_competition')
+setwd('path')
 
 #reading the data
-data <- read.csv('/home/apadala/Documents/AV_competition/Train_pjb2QcD.csv',na.strings = "")
-test_submit <- read.csv('/home/apadala/Documents/AV_competition/Test_wyCirpO.csv',na.strings = "")
+data <- read.csv('path/Train_pjb2QcD.csv',na.strings = "")
+test_submit <- read.csv('path/Test_wyCirpO.csv',na.strings = "")
 
 #combinging both train and test datasets
 data$flag <- T
@@ -222,19 +222,14 @@ for (i in 1:k){
   print(paste("Logistic Accuracy: ",log_auc_cv[i]))
 }
 print(paste("Logistics Regression - Cross Validation AUC score: ", mean(log_auc_cv))) 
-#0.57503837695554 #0.0.878527066131782
+#0.878527066131782
 
 #using cv.glm funstion
 logmodel.glm <- glm(Business_Sourced~. ,family=binomial, data = data_train)
 logmodel_cv <- cv.glm(data = data_train, glmfit = logmodel.glm, cost = auc_cal, K = 10)
 logmodel_cv_auc <- logmodel_cv$delta[[1]] #0.5958
 print(paste("Logistic (cv.glm) - AUC score: ",logmodel_cv_auc))
-#0.600145686523254 #0.881147488374305
-
-#For submission
-LogModel_pred <- predict(logmodel.glm, data_test, type = "response")
-submit_av <- data.frame(ID = test_submit[,c(1)],Business_Sourced = LogModel_pred)
-write.csv(submit_av,'/home/apadala/Documents/AV_competition/submit_AV.csv',row.names=FALSE)
+#0.881147488374305
 
 
 #random forest
@@ -272,9 +267,7 @@ for (t in ntree)
 rf_accuracy_all
 rf_accuracy_all[rf_accuracy_all$AUC_ROC == max(rf_accuracy_all$AUC_ROC),]
 #Trees Features Node_size   OOB_err   AUC_ROC
-#1000        3         2 0.3408566 0.6428248
-#Trees Features Node_size   OOB_err   AUC_ROC
-#1  1000        3         2 0.1855973 0.8915891
+#1000     3         2      0.185597 0.8915891
 rf_fit_best <-   randomForest(x = data_train[,!(colnames(data_train) == "Business_Sourced")],
                               y = data_train[,(colnames(data_train) == "Business_Sourced")],
                               ntree = 1000, mtry = 6, importance=TRUE,nodesize = 3,
@@ -290,12 +283,6 @@ rownames(imp)<- NULL
 imp<-imp[order(-imp$MeanDecreaseGini),c("Variables","MeanDecreaseGini")]
 plot(rf_fit_best, log="y")
 varImpPlot(rf_fit_best)
-
-#For submission
-rf_test_data <- predict(rf_fit_best, data_test, type = "prob")[,2]
-submit_av <- data.frame(ID = test_submit[,c(1)],Business_Sourced = rf_test_data)
-write.csv(submit_av,'/home/apadala/Documents/AV_competition/submit_AV.csv',row.names=FALSE)
-
 
 #Xgboost
 
@@ -377,10 +364,15 @@ bst <- xgboost(data = dtrain_cv,label = y_train_cv,
                eval_metric="auc",
                verbose = F)
 
+#auc : 0.9012
 #to print the model's important variables
 
 importance_matrix <- xgb.importance(dimnames(data_train)[[2]], model = bst)
 importance_matrix
 xgb.plot.importance(importance_matrix)
 
+#For submission
+xgb_test_data <- predict(bst, data_test, type = "prob")[,2]
+submit_av <- data.frame(ID = test_submit[,c(1)],Business_Sourced = xgb_test_data)
+write.csv(submit_av,'path/submit_AV.csv',row.names=FALSE)
 
