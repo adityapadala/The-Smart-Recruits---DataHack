@@ -7,7 +7,6 @@ library(boot)
 library(xgboost)
 library(Matrix)
 library(Ckmeans.1d.dp)
-library(parallel)
 library(dplyr)
 
 getwd()
